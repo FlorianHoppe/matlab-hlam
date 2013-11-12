@@ -1,0 +1,1013 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>HLAM</title>
+      <meta name="generator" content="MATLAB 7.4">
+      <meta name="date" content="2007-09-11">
+      <meta name="m-file" content="hlam_example"><style>
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head>
+   <body>
+      <div class="content">
+         <h1>HLAM</h1>
+         <introduction></introduction>
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#1">Basic Configuration</a></li>
+               <li><a href="#8">Network Configuration</a></li>
+               <li><a href="#20">Selection Criterion Functions</a></li>
+               <li><a href="#25">Generating the Network</a></li>
+               <li><a href="#35">The Expert Structure</a></li>
+               <li><a href="#43">Evaluating an Experiment</a></li>
+            </ul>
+         </div>
+         <h2>Basic Configuration<a name="1"></a></h2>
+         <p>The HLAM package uses a central configuration object to setup and store networks. This will be referred to as the <tt>app</tt> structure. The <tt>app</tt> structure contains the initial configuration of a learning environment, as well as the resulting network after running the
+            algorithm.
+         </p>
+         <p>Examples of configurations and useful training and test data sets are available in <tt>example/networks.mat</tt>.
+         </p>
+         <p><b>Type of Learning Algorithm</b></p>
+         <p>Two essentially different learning methods are available. Offline learning processes a complete set of data in one go. Online
+            learning feeds one sample at a time to the network using a different adaption strategy.
+         </p>
+         <div>
+            <ul>
+               <li><tt>app.learningAlgorithmType</tt> String, either <tt>'online'</tt> or <tt>'offline'</tt>.
+               </li>
+            </ul>
+         </div>
+         <p><b>Data Sample Specification</b></p>
+         <p>Data sets are organized in N x D matrices containing N samples of D dimensions, i.e. samples are handled as row-vectors. The
+            meaning of components may differ within a sample and must be specified using the <tt>app.dataSample</tt> substructure.
+         </p>
+         <div>
+            <ul>
+               <li><tt>dataSample.domainSpaceIndices</tt> Index or vector of indices of components containing domain space data.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>dataSample.modelSpaceIndices</tt> Index or vector of indices of components containing model space data.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>dataSample.outputIndices</tt> Index or vector of indices of components used to store results when evaluating a network.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>dataSample.targetOutputIndices</tt>  Index or vector of indices of components containing desired network output, used for comparison with actual results.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><i>[ Optional ]</i> <tt>dataSample.discreteOutputIndices</tt> Index or vector of indices specifying those output indices that are supposed to contain integer values. This is achieved
+                  by rounding the results during post-processing.
+               </li>
+            </ul>
+         </div>
+         <p><b>Important note:</b> While <tt>outputIndices</tt> specifies indices regarding the actual sample, <tt>discreteOutputIndices</tt> specifies indices of <tt>outputIndices</tt>.
+         </p>
+         <p>E.g., consider the following setup:</p><pre class="codeinput">dataSample.outputIndices         = [ 2 4 5 ];
+dataSample.discreteOutputIndices = [ 1   3 ];
+</pre><p>Here, only the results in components 2 and 5 of a sample will contain integer values.</p>
+         <h2>Network Configuration<a name="8"></a></h2>
+         <p>Further details are configured using the <tt>app.netInfo</tt> substructure.
+         </p>
+         <div>
+            <ul>
+               <li><tt>netInfo.domainType</tt> String, either <tt>'CD'</tt> (center domain), <tt>'HED'</tt> (hyper-ellipsoid domain) or <tt>'SVM'</tt> (SVM domain).
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.orderOfPolynom</tt> Integer.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.maxError</tt> Real number. During learning, experts will be added until the overall approximation error drops below this number.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.nFoldCrossValidation</tt> Integer.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.rejectOutliers</tt> Flag, set to <tt>1</tt> to activate. If set, the algorithm will throw an error in case an outlier is detected, instead of handling it gracefully.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.relativeActivationGatingLaw</tt> Flag, set to <tt>1</tt> to activate.
+               </li>
+            </ul>
+         </div>
+         <p><b>SVM Domain</b></p>
+         <p>Using support vector domains requires additional settings:</p>
+         <div>
+            <ul>
+               <li><tt>netInfo.domainParameters.muForGaussianSVMKernel</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.domainParameters.nu</tt></li>
+            </ul>
+         </div>
+         <p><b>Smoothing</b></p>
+         <div>
+            <ul>
+               <li><tt>netInfo.withSmoothing</tt> Flag, set to <tt>1</tt> to activate.
+               </li>
+            </ul>
+         </div>
+         <p>If smoothing is activated, additional flags are available:</p>
+         <div>
+            <ul>
+               <li><tt>netInfo.smoothingWithStrictMatchingScore</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.smoothingWithNeighborhoodGraph</tt></li>
+            </ul>
+         </div>
+         <p><b>Expert Evaluation</b></p>
+         <div>
+            <ul>
+               <li><tt>netInfo.onlyMaxScoreDecision</tt> Flag, set to <tt>1</tt> to activate. If set, modifies the criterion how to determine the best matching expert.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.maxScoreDecisionForOutliers</tt> Flag, set to <tt>1</tt> to activate. Modifies outlier detection mechanism.
+               </li>
+            </ul>
+         </div>
+         <p><b>Online Learning</b></p>
+         <p>A few settings are only used for online learning.</p>
+         <div>
+            <ul>
+               <li><tt>netInfo.sizeOfHistoryBuffer</tt> Integer, number of samples to collect before old samples will be dropped in favor of newer ones.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.minTrainSamples</tt> Integer, number of samples to collect, before adding a new expert. Should be less or equal to <tt>sizeOfHistoryBuffer</tt> (will be enforced otherwise).
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>netInfo.numOfSamplePassedForOnlineFusion</tt> Integer, number of samples after which fusion is applied to experts. <b>Note:</b> This setting will be used only by <tt>generateNet(...)</tt> and ignored when manually calling <tt>updateNet(...)</tt>.
+               </li>
+            </ul>
+         </div>
+         <h2>Selection Criterion Functions<a name="20"></a></h2>
+         <p><b>Settings</b></p>
+         <p>During online learning, experts may repeatedly be fused and redundant models removed. The algorithm's behaviour can be controlled
+            by using a specific selection criterion.
+         </p>
+         <div>
+            <ul>
+               <li><tt>netInfo.fuseCriterion</tt> Function pointer, an implementation of a selection criterion function.
+               </li>
+            </ul>
+         </div>
+         <p>Several criteria are already supplied in the 'criteria' subdirectory, such as:</p>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionAll</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionMin</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionMax</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionMinMax</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionAbsMax</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionClusterMaxSamples</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>@selectionCriterionClusterMaxNeighbors</tt></li>
+            </ul>
+         </div>
+         <p><b>Implementing your own Selection Criterion</b></p>
+         <p>You can provide your own selection criterion by simply using a function handle to your own implementation.</p>
+         <p>To integrate seamlessly, your function is required to take the <tt>app</tt> structure as an argument and return an N x 2 matrix of pairs of expert ids that are selected to be fused.
+         </p>
+         <h2>Generating the Network<a name="25"></a></h2>
+         <p>After configuring the <tt>app</tt> structure, you can finally create the network using problem specific training data. Obviously, this data must conform to
+            your data sample specification (see above).
+         </p><pre class="codeinput">app = generateNet(app, trainData);
+</pre><p>This will leave your settings untouched and add the following fields to the <tt>app</tt> structure:
+         </p>
+         <div>
+            <ul>
+               <li><tt>app.net</tt> Structure, describes the generated network.
+               </li>
+            </ul>
+         </div>
+         <p>The network is described by the following fields of the <tt>app.net</tt> substructure:
+         </p>
+         <div>
+            <ul>
+               <li><tt>net.timeNeededForTraining</tt> Time used for the training process in seconds.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.neighborhoodGraph</tt> Matrix, if set, it is the weighted adjacency matrix of the neighborhood graph that was used in the most recent trial to remove
+                  redundant models.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.experts</tt> Cell array, a column of expert substructures, see below for details.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.gatingNeurons</tt> Matrix, containing the neurons of all experts storing one neuron per row.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.neuronToExpertMap</tt> Column vector, index lookup to match neurons in the <tt>gatingNeuron</tt> collection to their respective experts. This is necessary in case there are fused experts which have more than one neuron.
+               </li>
+            </ul>
+         </div>
+         <p><b>Offline</b></p>
+         <div>
+            <ul>
+               <li><tt>net.meanTrainingErrorOfExperts</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.stdTrainingErrorOfExperts</tt></li>
+            </ul>
+         </div>
+         <p><b>Online</b></p>
+         <div>
+            <ul>
+               <li><tt>net.unusedTrainData</tt> N x D matrix of samples, collecting training data of single samples before being fed to the algorithm. Maybe empty after
+                  learning.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>net.badPerformanceAlthoughBelongsTo</tt> Number of samples which produced an approximation error above <tt>app.netInfo.maxError</tt> although they have already been matched with the domain of the best performing expert (this results in updating that expert).
+               </li>
+            </ul>
+         </div>
+         <h2>The Expert Structure<a name="35"></a></h2>
+         <p>An <tt>expert</tt> structure contains several fields describing the expert.
+         </p>
+         <div>
+            <ul>
+               <li><tt>expert.trainData</tt> Matrix, in standard data set dimensions. Contains the training data as used in the last update.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.numOfTrainingSamples</tt> Integer, number of samples in the afore mentioned data set.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.C</tt> Coefficient matrix from linear regression.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.allTrainingErrors</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.meanTrainingError</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.stdTrainingError</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.neuron</tt> Row vector.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>expert.domainModel</tt> A substructure describing the domain model, see below for details.
+               </li>
+            </ul>
+         </div>
+         <p>In case the <tt>expert</tt> structure resulted from fusing two experts, the <tt>expert.neuron</tt> and <tt>expert.domainModel</tt> fields are replaced by the fields <tt>expert.neurons</tt> and <tt>expert.domainModels</tt> respectively.
+         </p>
+         <p><b>Center Domain</b></p>
+         <p>No specific fields are set for experts using an center domain model.</p>
+         <p><b>Hyper-Ellipsoid Domain</b></p>
+         <p>The following fields provide detailed information about the domain model if the expert uses an hyper-ellipsoid domain.</p>
+         <div>
+            <ul>
+               <li><tt>domainModel.eigenSpace</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.position</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.variance</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.minDistance</tt></li>
+            </ul>
+         </div>
+         <p><b>SVM Domain</b></p>
+         <p>The following fields provide detailed information about the domain model if the expert uses an SVM domain.</p>
+         <div>
+            <ul>
+               <li><tt>domainModel.SVM</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.SVM.supportVectors</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.SVM.alphas</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.minDistance</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>domainModel.sparseness</tt></li>
+            </ul>
+         </div>
+         <h2>Evaluating an Experiment<a name="43"></a></h2>
+         <p>After constructing the net using specific training data, you may want to evaluate its quality using appropriate test data.
+            To evaluate your experiment, call
+         </p><pre class="codeinput">ex = evaluateExperiment(app, testData);
+</pre><p>or, to have the results plotted,</p><pre class="codeinput">ex = evaluateExperiment(app, testData, 1);
+</pre><p><b>Note:</b> Only the first two components of the gating input data and the neurons will be used in the plot. Also, if the <tt>app</tt> structure has been configured to use the offline algorithm, it is required to have <tt>app.image.width</tt> and <tt>app.image.height</tt> set to reasonable values which will affect the display.
+         </p>
+         <p>The resulting <tt>ex</tt> structure contains several fields describing the results.
+         </p>
+         <div>
+            <ul>
+               <li><tt>ex.app</tt> This is the initial configuration that you provided.
+               </li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.app.net</tt> Consequently, the generated net is also included.
+               </li>
+            </ul>
+         </div>
+         <p><b>Note:</b> It should be obvious that the <tt>ex</tt> structure contains all relevant information about your experiment. Thus, it is the only variable you need to save in case
+            you want to continue working with this experiment.
+         </p>
+         <p><b>Approximation Error</b></p>
+         <p>Several fields containing statistical information about the net's approximation error are available.</p>
+         <div>
+            <ul>
+               <li><tt>ex.ME</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.std</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.MSE</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.nMSE</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.RMSE</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.maxE</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.nMSE</tt></li>
+            </ul>
+         </div>
+         <p><b>Note:</b> <tt>ex.nMSE</tt> is only available if exactly one target ouput index is set in the data sample specification (one-dimensional output).
+         </p>
+         <p><b>Usage of Experts</b></p>
+         <p>The number of experts that have been activated for any individual sample can be retrieved from the <tt>matchingExpertsPerSample</tt> vector:
+         </p>
+         <div>
+            <ul>
+               <li><tt>ex.matchingExpertsPerSample( indexOfSample )</tt></li>
+            </ul>
+         </div>
+         <p>The number of times each individiual expert has been activated can be retrieved from the <tt>usageOfExperts.hits</tt> vector:
+         </p>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.hits( expertId )</tt></li>
+            </ul>
+         </div>
+         <p>Finally, several fields containing global statistical information about the experts' usage are available.</p>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.maxHits</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.minHits</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.medianHits</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.meanHits</tt></li>
+            </ul>
+         </div>
+         <div>
+            <ul>
+               <li><tt>ex.usageOfExpert.numOfNotUsed</tt> (not activated by any sample)
+               </li>
+            </ul>
+         </div>
+         <p class="footer"><br>
+            Published with MATLAB&reg; 7.4<br></p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% HLAM
+
+
+
+%% Basic Configuration
+%
+% The HLAM package uses a central configuration object to setup and store
+% networks. This will be referred to as the |app| structure. The |app|
+% structure contains the initial configuration of a learning environment,
+% as well as the resulting network after running the algorithm.
+%
+% Examples of configurations and useful training and test data sets are
+% available in |example/networks.mat|.
+
+
+
+%%
+% *Type of Learning Algorithm*
+%
+% Two essentially different learning methods are available. Offline
+% learning processes a complete set of data in one go. Online learning
+% feeds one sample at a time to the network using a different adaption
+% strategy.
+
+%%
+% * |app.learningAlgorithmType| String, either |'online'| or |'offline'|.
+
+
+
+%%
+% *Data Sample Specification*
+%
+% Data sets are organized in N x D matrices containing N samples of D
+% dimensions, i.e. samples are handled as row-vectors. The meaning of
+% components may differ within a sample and must be specified using the
+% |app.dataSample| substructure.
+
+%%
+% * |dataSample.domainSpaceIndices| Index or vector of indices of
+% components containing domain space data.
+%
+% * |dataSample.modelSpaceIndices| Index or vector of indices of components
+% containing model space data.
+%
+% * |dataSample.outputIndices| Index or vector of indices of components
+% used to store results when evaluating a network.
+%
+% * |dataSample.targetOutputIndices|  Index or vector of indices of
+% components containing desired network output, used for comparison with
+% actual results.
+%
+% * _[ Optional ]_ |dataSample.discreteOutputIndices| Index or vector of
+% indices specifying those output indices that are supposed to contain
+% integer values. This is achieved by rounding the results during
+% post-processing.
+
+%%
+% *Important note:* While |outputIndices| specifies indices regarding the
+% actual sample, |discreteOutputIndices| specifies indices of
+% |outputIndices|.
+%
+% E.g., consider the following setup:
+
+dataSample.outputIndices         = [ 2 4 5 ];
+dataSample.discreteOutputIndices = [ 1   3 ];
+
+%%
+% Here, only the results in components 2 and 5 of a sample will contain
+% integer values.
+
+
+
+%% Network Configuration
+%
+% Further details are configured using the |app.netInfo| substructure.
+
+%%
+% * |netInfo.domainType| String, either |'CD'| (center domain), |'HED'|
+% (hyper-ellipsoid domain) or |'SVM'| (SVM domain).
+%
+% * |netInfo.orderOfPolynom| Integer.
+%
+% * |netInfo.maxError| Real number. During learning, experts will be added
+% until the overall approximation error drops below this number.
+%
+% * |netInfo.nFoldCrossValidation| Integer.
+%
+% * |netInfo.rejectOutliers| Flag, set to |1| to activate. If set, the
+% algorithm will throw an error in case an outlier is detected, instead of
+% handling it gracefully.
+%
+% * |netInfo.relativeActivationGatingLaw| Flag, set to |1| to activate.
+
+
+%%
+% *SVM Domain*
+%
+% Using support vector domains requires additional settings:
+
+%%
+% * |netInfo.domainParameters.muForGaussianSVMKernel|
+%
+% * |netInfo.domainParameters.nu|
+
+
+
+%%
+% *Smoothing*
+
+%%
+% * |netInfo.withSmoothing| Flag, set to |1| to activate.
+
+%%
+% If smoothing is activated, additional flags are available:
+
+%%
+% * |netInfo.smoothingWithStrictMatchingScore|
+%
+% * |netInfo.smoothingWithNeighborhoodGraph|
+
+
+
+%%
+% *Expert Evaluation*
+
+%%
+% * |netInfo.onlyMaxScoreDecision| Flag, set to |1| to activate. If set,
+% modifies the criterion how to determine the best matching expert.
+%
+% * |netInfo.maxScoreDecisionForOutliers| Flag, set to |1| to activate.
+% Modifies outlier detection mechanism.
+
+
+
+%%
+% *Online Learning*
+%
+% A few settings are only used for online learning.
+
+%%
+% * |netInfo.sizeOfHistoryBuffer| Integer, number of samples to collect
+% before old samples will be dropped in favor of newer ones.
+%
+% * |netInfo.minTrainSamples| Integer, number of samples to collect, before
+% adding a new expert. Should be less or equal to |sizeOfHistoryBuffer|
+% (will be enforced otherwise).
+%
+% * |netInfo.numOfSamplePassedForOnlineFusion| Integer, number of samples
+% after which fusion is applied to experts. *Note:* This setting will be
+% used only by |generateNet(...)| and ignored when manually calling
+% |updateNet(...)|.
+
+
+
+%% Selection Criterion Functions
+%
+% *Settings*
+%
+% During online learning, experts may repeatedly be fused and redundant
+% models removed. The algorithm's behaviour can be controlled by using a
+% specific selection criterion.
+
+%%
+% * |netInfo.fuseCriterion| Function pointer, an implementation of a
+% selection criterion function.
+
+%%
+% Several criteria are already supplied in the 'criteria' subdirectory,
+% such as:
+
+%%
+% * |@selectionCriterionAll|
+%
+% * |@selectionCriterionMin|
+%
+% * |@selectionCriterionMax|
+%
+% * |@selectionCriterionMinMax|
+%
+% * |@selectionCriterionAbsMax|
+%
+% * |@selectionCriterionClusterMaxSamples|
+%
+% * |@selectionCriterionClusterMaxNeighbors|
+
+
+
+%%
+% *Implementing your own Selection Criterion*
+%
+% You can provide your own selection criterion by simply using a function
+% handle to your own implementation.
+%
+% To integrate seamlessly, your function is required to take the |app|
+% structure as an argument and return an N x 2 matrix of pairs of expert
+% ids that are selected to be fused.
+
+
+
+%% Generating the Network
+%
+% After configuring the |app| structure, you can finally create the network
+% using problem specific training data. Obviously, this data must conform
+% to your data sample specification (see above).
+
+app = generateNet(app, trainData);
+
+%%
+% This will leave your settings untouched and add the following fields to
+% the |app| structure:
+
+%%
+% * |app.net| Structure, describes the generated network.
+
+%%
+% The network is described by the following fields of the |app.net|
+% substructure:
+
+%%
+% * |net.timeNeededForTraining| Time used for the training process in
+% seconds.
+%
+% * |net.neighborhoodGraph| Matrix, if set, it is the weighted adjacency
+% matrix of the neighborhood graph that was used in the most recent trial
+% to remove redundant models.
+
+%%
+% * |net.experts| Cell array, a column of expert substructures, see below
+% for details.
+%
+% * |net.gatingNeurons| Matrix, containing the neurons of all experts
+% storing one neuron per row.
+%
+% * |net.neuronToExpertMap| Column vector, index lookup to match neurons in
+% the |gatingNeuron| collection to their respective experts. This is
+% necessary in case there are fused experts which have more than one
+% neuron.
+
+
+
+%%
+% *Offline*
+
+%%
+% * |net.meanTrainingErrorOfExperts|
+%
+% * |net.stdTrainingErrorOfExperts|
+
+
+
+%%
+% *Online*
+
+%%
+% * |net.unusedTrainData| N x D matrix of samples, collecting training data
+% of single samples before being fed to the algorithm. Maybe empty after
+% learning.
+%
+% * |net.badPerformanceAlthoughBelongsTo| Number of samples which produced
+% an approximation error above |app.netInfo.maxError| although they have
+% already been matched with the domain of the best performing expert (this
+% results in updating that expert).
+
+
+
+%% The Expert Structure
+%
+% An |expert| structure contains several fields describing the expert.
+
+%%
+% * |expert.trainData| Matrix, in standard data set dimensions. Contains
+% the training data as used in the last update.
+%
+% * |expert.numOfTrainingSamples| Integer, number of samples in the afore
+% mentioned data set.
+%
+% * |expert.C| Coefficient matrix from linear regression.
+%
+% * |expert.allTrainingErrors|
+%
+% * |expert.meanTrainingError|
+%
+% * |expert.stdTrainingError|
+%
+% * |expert.neuron| Row vector.
+%
+% * |expert.domainModel| A substructure describing the domain model, see
+% below for details.
+
+%%
+% In case the |expert| structure resulted from fusing two experts, the
+% |expert.neuron| and |expert.domainModel| fields are replaced by the
+% fields |expert.neurons| and |expert.domainModels| respectively.
+
+
+
+%%
+% *Center Domain*
+%
+% No specific fields are set for experts using an center domain model.
+
+
+
+%%
+% *Hyper-Ellipsoid Domain*
+%
+% The following fields provide detailed information about the domain model
+% if the expert uses an hyper-ellipsoid domain.
+
+%%
+% * |domainModel.eigenSpace|
+%
+% * |domainModel.position|
+%
+% * |domainModel.variance|
+%
+% * |domainModel.minDistance|
+
+
+
+%%
+% *SVM Domain*
+%
+% The following fields provide detailed information about the domain model
+% if the expert uses an SVM domain.
+
+%%
+% * |domainModel.SVM|
+%
+% * |domainModel.SVM.supportVectors|
+%
+% * |domainModel.SVM.alphas|
+%
+% * |domainModel.minDistance|
+%
+% * |domainModel.sparseness|
+
+
+
+%% Evaluating an Experiment
+%
+% After constructing the net using specific training data, you may want to
+% evaluate its quality using appropriate test data. To evaluate your
+% experiment, call
+
+ex = evaluateExperiment(app, testData);
+
+%%
+% or, to have the results plotted,
+
+ex = evaluateExperiment(app, testData, 1);
+
+%%
+% *Note:* Only the first two components of the gating input data and the
+% neurons will be used in the plot. Also, if the |app| structure has been
+% configured to use the offline algorithm, it is required to have
+% |app.image.width| and |app.image.height| set to reasonable values which
+% will affect the display.
+
+%%
+% The resulting |ex| structure contains several fields describing the
+% results.
+
+%%
+% * |ex.app| This is the initial configuration that you provided.
+%
+% * |ex.app.net| Consequently, the generated net is also included.
+
+%%
+% *Note:* It should be obvious that the |ex| structure contains all
+% relevant information about your experiment. Thus, it is the only variable
+% you need to save in case you want to continue working with this
+% experiment.
+
+%%
+% *Approximation Error*
+%
+% Several fields containing statistical information about the net's
+% approximation error are available.
+
+%%
+% * |ex.ME|
+%
+% * |ex.std|
+%
+% * |ex.MSE|
+%
+% * |ex.nMSE|
+%
+% * |ex.RMSE|
+%
+% * |ex.maxE|
+%
+% * |ex.nMSE|
+
+%%
+% *Note:* |ex.nMSE| is only available if exactly one target ouput index is
+% set in the data sample specification (one-dimensional output).
+
+
+
+%%
+% *Usage of Experts*
+%
+% The number of experts that have been activated for any individual sample
+% can be retrieved from the |matchingExpertsPerSample| vector:
+
+%%
+% * |ex.matchingExpertsPerSample( indexOfSample )|
+
+%%
+% The number of times each individiual expert has been activated can be
+% retrieved from the |usageOfExperts.hits| vector:
+
+%%
+% * |ex.usageOfExpert.hits( expertId )|
+
+%%
+% Finally, several fields containing global statistical information about
+% the experts' usage are available.
+
+%%
+% * |ex.usageOfExpert.maxHits|
+%
+% * |ex.usageOfExpert.minHits|
+%
+% * |ex.usageOfExpert.medianHits|
+%
+% * |ex.usageOfExpert.meanHits|
+%
+% * |ex.usageOfExpert.numOfNotUsed| (not activated by any sample)
+
+
+##### SOURCE END #####
+-->
+   </body>
+</html>
